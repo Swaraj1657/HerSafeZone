@@ -151,4 +151,15 @@ class FirebaseService {
 
     await _emergencyContactsCollection.doc(contactId).delete();
   }
+
+  Future<void> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
 }

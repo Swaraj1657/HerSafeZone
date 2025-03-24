@@ -3,7 +3,14 @@ import '../utils/constants.dart';
 
 /// CustomBottomNavBar provides navigation between main app sections
 class CustomBottomNavBar extends StatelessWidget {
-  const CustomBottomNavBar({super.key});
+  final int selectedIndex;
+  final Function(int) onTap;
+
+  const CustomBottomNavBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +30,27 @@ class CustomBottomNavBar extends StatelessWidget {
               _NavBarItem(
                 icon: Icons.home,
                 label: 'Home',
-                isSelected: true,
-                onTap: () {},
+                isSelected: selectedIndex == 0,
+                onTap: () => onTap(0),
               ),
               _NavBarItem(
                 icon: Icons.location_on,
                 label: 'Location',
-                onTap: () {},
+                isSelected: selectedIndex == 1,
+                onTap: () => onTap(1),
               ),
-              _NavBarItem(icon: Icons.history, label: 'History', onTap: () {}),
-              _NavBarItem(icon: Icons.people, label: 'Community', onTap: () {}),
+              _NavBarItem(
+                icon: Icons.history,
+                label: 'History',
+                isSelected: selectedIndex == 2,
+                onTap: () => onTap(2),
+              ),
+              _NavBarItem(
+                icon: Icons.people,
+                label: 'Community',
+                isSelected: selectedIndex == 3,
+                onTap: () => onTap(3),
+              ),
             ],
           ),
         ),

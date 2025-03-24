@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is accessing their own data
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Medical info collection rules
+    match /medical_info/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Emergency contacts collection rules
+    match /emergency_contacts/{auto_id} {
+      allow read, write: if isAuthenticated() && 
+        (request.auth.uid == resource.data.userId || 
+         request.auth.uid == request.resource.data.userId);
+    }
+
+    // Emergency history collection rules
+    match /emergency_history/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // Allow access to alerts subcollection
+      match /alerts/{alertId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+} 

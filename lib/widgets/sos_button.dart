@@ -13,7 +13,7 @@ class SOSButton extends StatefulWidget {
 
 class _SOSButtonState extends State<SOSButton>
     with SingleTickerProviderStateMixin {
-  bool isPressed = false;
+  bool isEmergencyActive = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -35,51 +35,67 @@ class _SOSButtonState extends State<SOSButton>
     );
   }
 
-  /// Handles the start of SOS button press
-  void _handleSOSPress() {
-    setState(() => isPressed = true);
-    EmergencyService.instance.startEmergencyProcess();
-  }
+  /// Toggles the emergency state
+  void _toggleEmergency() {
+    if (!isEmergencyActive) {
+      // Start emergency
+      EmergencyService.instance.startEmergencyProcess();
+    } else {
+      // Stop emergency
+      EmergencyService.instance.stopEmergencyProcess();
+    }
 
-  /// Handles the release of SOS button
-  void _handleSOSRelease() {
-    setState(() => isPressed = false);
-    EmergencyService.instance.stopEmergencyProcess();
+    setState(() {
+      isEmergencyActive = !isEmergencyActive;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _handleSOSPress(),
-      onTapUp: (_) => _handleSOSRelease(),
-      onTapCancel: _handleSOSRelease,
+      onTap: _toggleEmergency,
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
           return Transform.scale(
-            scale: isPressed ? 0.95 : _pulseAnimation.value,
+            scale: _pulseAnimation.value,
             child: Container(
               width: 180,
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isPressed ? Colors.red : AppColors.primary,
+                color: isEmergencyActive ? Colors.red : AppColors.primary,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
+                    color: (isEmergencyActive ? Colors.red : AppColors.primary)
+                        .withOpacity(0.4),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'SOS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'SOS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (isEmergencyActive)
+                      Text(
+                        'TAP TO STOP',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

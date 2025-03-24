@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_screen.dart';
 import 'screens/location_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/community_screen.dart';
+import 'screens/login_screen.dart'; // Add your login screen
+import 'screens/signup_screen.dart'; // Add your signup screen
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const WomenSafetyApp());
 }
 
@@ -17,7 +23,6 @@ class WomenSafetyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Women Safety App',
       theme: ThemeData(
-        // Custom theme with specified color scheme
         primaryColor: const Color(0xFFC50048), // Deep magenta
         scaffoldBackgroundColor: const Color(
           0xFF140014,
@@ -28,13 +33,45 @@ class WomenSafetyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainNavigator(),
       debugShowCheckedModeBanner: false,
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/signup': (context) => SignupScreen(),
+        '/home': (context) => const MainNavigator(),
+      },
+      home: const AuthCheck(), // AuthCheck determines where to navigate
     );
   }
 }
 
-/// MainNavigator handles the bottom navigation between main screens
+/// **AuthCheck** - Determines whether to show login or main screen
+class AuthCheck extends StatelessWidget {
+  const AuthCheck({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ), // Show loading while checking auth
+          );
+        }
+        if (snapshot.hasData) {
+          return const MainNavigator(); // User is logged in, go to main screen
+        } else {
+          return LoginScreen(); // User is not logged in, show login page
+        }
+      },
+    );
+  }
+}
+
+/// **MainNavigator** - Handles bottom navigation between main screens
 class MainNavigator extends StatefulWidget {
   const MainNavigator({super.key});
 

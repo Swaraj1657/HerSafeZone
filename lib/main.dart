@@ -34,11 +34,10 @@ class WomenSafetyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
       routes: {
         '/login': (context) => LoginScreen(),
         '/signup': (context) => SignupScreen(),
-        '/home': (context) => const MainNavigator(),
+        '/home': (context) => MainNavigator(),
       },
       home: const AuthCheck(), // AuthCheck determines where to navigate
     );
@@ -64,7 +63,7 @@ class AuthCheck extends StatelessWidget {
         if (snapshot.hasData) {
           return const MainNavigator(); // User is logged in, go to main screen
         } else {
-          return LoginScreen(); // User is not logged in, show login page
+          return const LoginScreen(); // User is not logged in, show login page
         }
       },
     );

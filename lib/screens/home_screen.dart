@@ -43,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< Updated upstream
     return Scaffold(
       drawer: _buildDrawer(context),
       body: SafeArea(
@@ -69,33 +70,81 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+=======
+    return WillPopScope(
+      onWillPop: () async {
+        // If drawer is open, close it
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return false;
+        }
+        // Otherwise, let the system handle the back button
+        return true;
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _buildDrawer(context),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Top Bar with Profile Icon
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+>>>>>>> Stashed changes
                   children: [
-                    const SOSButton(),
-                    const SizedBox(height: 16),
                     Text(
-                      'Hold the SOS button to alert',
+                      'Hello, ${_userName ?? 'User'}!',
                       style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.textSecondary,
-                        fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        'This will notify your emergency contacts and nearby authorities',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textSecondary.withOpacity(0.75),
-                          fontSize: 14,
-                        ),
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.person_outline),
+                      onPressed: () {
+                        _scaffoldKey.currentState?.openDrawer();
+                      },
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              // Main Content with SOS Button
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SOSButton(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Hold the SOS button to alert',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          'This will notify your emergency contacts and nearby authorities',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textSecondary.withOpacity(0.75),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

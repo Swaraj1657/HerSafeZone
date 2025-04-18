@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = '';
       });
 
+<<<<<<< Updated upstream
       try {
         await _auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -37,6 +38,51 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _isLoading = false;
         });
+=======
+    setState(() => _isLoading = true);
+
+    try {
+      // Sign in with Firebase
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (mounted) {
+        // Navigate to home screen using MainNavigator which includes bottom navigation
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'An error occurred';
+
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email';
+      } else if (e.code == 'wrong-password') {
+        message = 'Wrong password provided';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email address';
+      } else if (e.code == 'user-disabled') {
+        message = 'This account has been disabled';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+>>>>>>> Stashed changes
       }
     }
   }

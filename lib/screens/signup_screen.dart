@@ -19,12 +19,42 @@ class _SignupScreenState extends State<SignupScreen> {
   String _errorMessage = '';
 
   Future<void> _signup() async {
+<<<<<<< Updated upstream
     if (_formKey.currentState!.validate()) {
       if (_passwordController.text != _confirmPasswordController.text) {
         setState(() {
           _errorMessage = 'Passwords do not match';
         });
         return;
+=======
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Create user with Firebase
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Update user profile with name
+      await userCredential.user?.updateDisplayName(_nameController.text.trim());
+
+      if (mounted) {
+        // Navigate to home screen using MainNavigator which includes bottom navigation
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'An error occurred';
+
+      if (e.code == 'weak-password') {
+        message = 'The password provided is too weak';
+      } else if (e.code == 'email-already-in-use') {
+        message = 'An account already exists for this email';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email address';
+>>>>>>> Stashed changes
       }
 
       setState(() {

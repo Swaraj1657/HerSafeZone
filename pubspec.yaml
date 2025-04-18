@@ -42,7 +42,12 @@ dependencies:
   telephony: ^0.2.0
   flutter_phone_direct_caller: ^2.0.0
   flutter_direct_call_plus: ^0.0.3
+<<<<<<< Updated upstream
   telephony_sms: ^0.0.4
+=======
+  intl: ^0.20.2
+  dio: ^5.8.0+1
+>>>>>>> Stashed changes
 
 dev_dependencies:
   flutter_test:

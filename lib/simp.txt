@@ -1,0 +1,320 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:location/location.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:map/appColors.dart';
+import 'package:map/reportSheet.dart';
+
+class Mapscreen extends StatefulWidget {
+  const Mapscreen({Key? key}) : super(key: key);
+
+  @override
+  State<Mapscreen> createState() => _MapscreenState();
+}
+
+class _MapscreenState extends State<Mapscreen> {
+  Location _locationController = Location();
+  LatLng? _currentP;
+  CameraPosition? initialPosition;
+  String? error;
+  List<Map<String, dynamic>> reportedCenters = [];
+  LatLng? pickedLocation;
+  LatLng? destination;
+
+  // Add controller for the map
+  GoogleMapController? _mapController;
+
+  // Add a flag to control camera follow mode
+  bool _followUser = true;
+
+  // Empty polylines set - we won't add any polylines
+  Set<Polyline> polylines = {};
+
+  @override
+  void initState() {
+    super.initState();
+    getLocationPermission();
+  }
+
+  
+
+  Future<void> getLocationPermission() async {
+    bool _serviceEnabled;
+    PermissionStatus _permissionGranted;
+
+    _serviceEnabled = await _locationController.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await _locationController.requestService();
+      if (!_serviceEnabled) {
+        setState(() {
+          error = "Location services are disabled.";
+        });
+        return;
+      }
+    }
+
+    _permissionGranted = await _locationController.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await _locationController.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        setState(() {
+          error = "Location permission denied.";
+        });
+        return;
+      }
+    }
+
+    // Initialize location settings for better accuracy and updates
+    _locationController.changeSettings(
+      accuracy: LocationAccuracy.high,
+      interval: 1000, // Update every second
+      distanceFilter: 5, // Update when moved at least 5 meters
+    );
+
+    _locationController.onLocationChanged.listen((currentLocation) {
+      if (currentLocation.latitude != null &&
+          currentLocation.longitude != null) {
+        setState(() {
+          _currentP = LatLng(
+            currentLocation.latitude!,
+            currentLocation.longitude!,
+          );
+
+          // Update initialPosition only if it's the first location
+          if (initialPosition == null) {
+            initialPosition = CameraPosition(target: _currentP!, zoom: 16);
+          }
+
+          // If follow mode is on and map controller exists, update camera position
+          if (_followUser && _mapController != null) {
+            _mapController!.animateCamera(CameraUpdate.newLatLng(_currentP!));
+          }
+
+          // We removed the update polyline call that was here
+        });
+      }
+    });
+  }
+
+  // This method is kept but won't be used
+  // If you need to completely remove it, that's fine too
+  void _updatePolyline() {
+    // We're leaving this empty to remove the polyline functionality
+    // Or we can explicitly clear any existing polylines
+    setState(() {
+      polylines = {};
+    });
+  }
+
+  Set<Circle> _createCircles() {
+    Set<Circle> circles = {};
+
+    for (int i = 0; i < reportedCenters.length; i++) {
+      circles.add(
+        Circle(
+          circleId: CircleId("report_$i"),
+          center: reportedCenters[i]['position'],
+          radius: 300,
+          strokeColor: Colors.black,
+          strokeWidth: 1,
+          fillColor: reportedCenters[i]['color'],
+        ),
+      );
+    }
+
+    if (pickedLocation != null) {
+      circles.add(
+        Circle(
+          circleId: CircleId("tapped_point"),
+          center: pickedLocation!,
+          radius: 300,
+          strokeColor: Colors.black,
+          strokeWidth: 1,
+          fillColor: Colors.grey.withOpacity(0.6),
+        ),
+      );
+    }
+
+    return circles;
+  }
+
+  // Method to check if a tapped point is on or near the destination
+  bool _isNearDestination(LatLng tappedPoint) {
+    if (destination == null) return false;
+
+    // Calculate distance between tapped point and destination
+    double distance = _calculateDistance(tappedPoint, destination!);
+
+    // If distance is less than a threshold (e.g., 50 meters), consider it a tap on destination
+    return distance < 0.05; // ~50 meters
+  }
+
+  // Calculate distance between two points (simplified)
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    double lat1 = point1.latitude;
+    double lon1 = point1.longitude;
+    double lat2 = point2.latitude;
+    double lon2 = point2.longitude;
+
+    // Using Euclidean distance for simplicity and speed
+    return ((lat1 - lat2) * (lat1 - lat2) + (lon1 - lon2) * (lon1 - lon2));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Heat Map"),
+        actions: [
+          // Add a toggle button for follow mode
+          IconButton(
+            icon: Icon(
+              _followUser ? Icons.location_on : Icons.location_off,
+              color: _followUser ? Colors.blue : Colors.grey,
+            ),
+            onPressed: () {
+              setState(() {
+                _followUser = !_followUser;
+
+                // If turning follow mode back on, immediately move camera to current location
+                if (_followUser &&
+                    _currentP != null &&
+                    _mapController != null) {
+                  _mapController!.animateCamera(
+                    CameraUpdate.newLatLng(_currentP!),
+                  );
+                }
+              });
+            },
+            tooltip:
+                _followUser ? "Location tracking on" : "Location tracking off",
+          ),
+        ],
+      ),
+      body:
+          error != null
+              ? Center(child: Text(error!, style: TextStyle(color: Colors.red)))
+              : initialPosition == null
+              ? const Center(child: CircularProgressIndicator())
+              : GoogleMap(
+                myLocationButtonEnabled: true,
+                myLocationEnabled: true,
+                zoomControlsEnabled: true,
+                compassEnabled: true,
+                
+                mapType: MapType.hybrid,
+                initialCameraPosition: initialPosition!,
+                markers: {
+                  if (_currentP != null)
+                    Marker(
+                      markerId: const MarkerId("Current_Position"),
+                      icon: BitmapDescriptor.defaultMarker,
+                      position: _currentP!,
+                      infoWindow: const InfoWindow(title: "Your Location"),
+                    ),
+                  if (destination != null)
+                    Marker(
+                      markerId: const MarkerId("Destination"),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueGreen,
+                      ),
+                      position: destination!,
+                      infoWindow: const InfoWindow(title: "Destination"),
+                    ),
+                },
+                polylines: polylines, // This will now always be an empty set
+                circles: _createCircles(),
+                onTap: (LatLng tappedPoint) {
+                  if (_isNearDestination(tappedPoint)) {
+                    // If tapped near the destination, remove it
+                    setState(() {
+                      destination = null;
+                      pickedLocation = null;
+                      polylines.clear(); // Ensure polylines are cleared
+
+                      // Show a confirmation
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Destination removed")),
+                      );
+                    });
+                  } else {
+                    // Set new destination
+                    setState(() {
+                      pickedLocation = tappedPoint;
+                      destination = tappedPoint;
+                      // We removed the polyline update call that was here
+
+                      // When selecting a destination, turn off follow mode
+                      _followUser = false;
+                    });
+                  }
+                },
+                onMapCreated: (GoogleMapController controller) {
+                  _mapController = controller;
+                },
+                onCameraMove: (_) {
+                  // If user manually moves the camera, disable follow mode
+                  if (_followUser) {
+                    setState(() {
+                      _followUser = false;
+                    });
+                  }
+                },
+              ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: () {
+              // Recenter the map on current location and enable follow mode
+              if (_currentP != null && _mapController != null) {
+                _mapController!.animateCamera(
+                  CameraUpdate.newLatLng(_currentP!),
+                );
+                setState(() {
+                  _followUser = true;
+                });
+              }
+            },
+            label: const Text("Center on Me"),
+            icon: const Icon(Icons.my_location),
+            backgroundColor: Colors.green,
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            onPressed: () {
+              if (_currentP != null) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  builder:
+                      (context) => ReportSheet(
+                        currentLocation: _currentP!,
+                        pickedLocation: pickedLocation,
+                        onReportSubmitted: (report) {
+                          setState(() {
+                            reportedCenters.add(report);
+                          });
+                        },
+                      ),
+                );
+              }
+            },
+            label: const Text("Report Area"),
+            icon: const Icon(Icons.report),
+            backgroundColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}

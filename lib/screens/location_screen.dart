@@ -1,3 +1,4 @@
+import 'package:field_project_test1/screens/mapscreen.dart';
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import '../widgets/safety_location_card.dart';
@@ -19,16 +20,14 @@ class LocationScreen extends StatelessWidget {
         children: [
           // Map placeholder (Replace with actual map implementation)
           Expanded(
-            flex: 3,
+            flex: 6,
             child: Container(
               margin: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
-                child: Text('Map View', style: AppTextStyles.subheading),
-              ),
+              child: Center(child: Mapscreen()),
             ),
           ),
 

@@ -122,7 +122,7 @@ class _MapscreenState extends State<Mapscreen> {
           center: reportedCenters[i]['position'],
           radius: 300,
           strokeColor: Colors.black,
-          strokeWidth: 1,
+          strokeWidth: 0,
           fillColor: reportedCenters[i]['color'],
         ),
       );

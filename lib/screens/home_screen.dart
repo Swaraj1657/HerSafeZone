@@ -1,3 +1,4 @@
+import 'package:field_project_test1/services/emergency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/sos_button.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserName();
+    EmergencyService.instance.requestAllPermissions();
   }
 
   Future<void> _loadUserName() async {

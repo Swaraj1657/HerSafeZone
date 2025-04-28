@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportSheet extends StatefulWidget {
   final LatLng currentLocation;
@@ -29,6 +30,32 @@ class _ReportSheetState extends State<ReportSheet> {
     'Not safe for women',
   ];
   final List<String> intensities = ['Low', 'Medium', 'High'];
+
+  Future<void> _saveReportToFirebase(Map<String, dynamic> report) async {
+    try {
+      // Convert LatLng to GeoPoint for Firestore
+      GeoPoint geoPoint = GeoPoint(
+        report['position'].latitude,
+        report['position'].longitude,
+      );
+
+      // Create report data
+      final reportData = {
+        'position': geoPoint,
+        'incident': report['incident'],
+        'intensity': report['intensity'],
+        'description': report['description'],
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      // Save to Firestore
+      await FirebaseFirestore.instance
+          .collection('reports')
+          .add(reportData);
+    } catch (e) {
+      print('Error saving report: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +141,7 @@ class _ReportSheetState extends State<ReportSheet> {
 
             /// SUBMIT BUTTON
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 if (selectedIncident != null &&
                     selectedIntensity != null &&
                     selectedLocation != null) {
@@ -137,6 +164,7 @@ class _ReportSheetState extends State<ReportSheet> {
                     'color': color,
                   };
 
+                  await _saveReportToFirebase(report);
                   widget.onReportSubmitted(report);
                   Navigator.pop(context);
                 } else {

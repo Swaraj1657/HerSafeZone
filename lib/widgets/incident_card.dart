@@ -60,7 +60,7 @@ class IncidentCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -87,7 +87,7 @@ class IncidentCard extends StatelessWidget {
             Text(
               date,
               style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.7),
+                color:Colors.black,
                 fontSize: 12,
               ),
             ),

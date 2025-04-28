@@ -5,6 +5,7 @@ import 'package:field_project_test1/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Mapscreen extends StatefulWidget {
   const Mapscreen({Key? key}) : super(key: key);
@@ -55,6 +56,80 @@ class _MapscreenState extends State<Mapscreen> {
   void initState() {
     super.initState();
     getLocationPermission();
+    _loadReportsFromFirebase();
+  }
+
+  Future<void> _loadReportsFromFirebase() async {
+    try {
+      FirebaseFirestore.instance.collection('reports').snapshots().listen((
+        snapshot,
+      ) {
+        List<Map<String, dynamic>> newReports = [];
+
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final GeoPoint geoPoint = data['position'];
+
+          final report = {
+            'position': LatLng(geoPoint.latitude, geoPoint.longitude),
+            'incident': data['incident'],
+            'intensity': data['intensity'],
+            'description': data['description'],
+            'color': _getColorBasedOnIncidentAndIntensity(
+              data['incident'],
+              data['intensity'],
+            ),
+          };
+
+          newReports.add(report);
+        }
+
+        if (mounted) {
+          setState(() {
+            reportedCenters = newReports;
+          });
+        }
+      });
+    } catch (e) {
+      print('Error loading reports: $e');
+    }
+  }
+
+  Color _getColorBasedOnIncidentAndIntensity(
+    String incident,
+    String intensity,
+  ) {
+    Color baseColor;
+    switch (incident) {
+      case 'Robbery':
+        baseColor = Colors.yellow;
+        break;
+      case 'Not safe for women':
+        baseColor = Colors.red;
+        break;
+      case 'Not safe for alone':
+        baseColor = Colors.orange;
+        break;
+      default:
+        baseColor = Colors.grey;
+    }
+
+    double opacity;
+    switch (intensity) {
+      case 'Low':
+        opacity = 0.15;
+        break;
+      case 'Medium':
+        opacity = 0.22;
+        break;
+      case 'High':
+        opacity = 0.3;
+        break;
+      default:
+        opacity = 0.1;
+    }
+
+    return baseColor.withOpacity(opacity);
   }
 
   Future<void> getLocationPermission() async {

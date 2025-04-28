@@ -14,31 +14,29 @@ class EmergencyService {
   // Singleton instance
   static final EmergencyService instance = EmergencyService._internal();
   EmergencyService._internal();
+
   final _telephonySMS = TelephonySMS();
   final FirebaseService _firebaseService = FirebaseService();
+
   bool _isEmergencyActive = false;
   Timer? _locationUpdateTimer;
   List<Map<String, dynamic>> _locationHistory = [];
   DateTime? _startTime;
 
-  getPermissionMsg() async {
+  Future<void> requestAllPermissions() async {
     await _telephonySMS.requestPermission();
+    await Geolocator.requestPermission();
+    await Permission.phone.request();
   }
 
-  getLocationPermission() async {
-    Geolocator.requestPermission();
-  }
-
-  getLocation() async {
-    Position position = await Geolocator.getCurrentPosition(
+  Future<Position> getLocation() async {
+    return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
-    return position;
   }
 
-  // Start location updates every 2 minutes
   void _startLocationUpdates() {
-    _locationUpdateTimer = Timer.periodic(const Duration(minutes: 2), (
+    _locationUpdateTimer = Timer.periodic(const Duration(minutes: 1), (
       timer,
     ) async {
       if (!_isEmergencyActive) {
@@ -57,10 +55,8 @@ class EmergencyService {
 
         _locationHistory.add(locationData);
 
-        // Update location in Firebase
         final user = _firebaseService.currentUser;
         if (user != null && _startTime != null) {
-          // Create or update the emergency_history document
           await FirebaseFirestore.instance
               .collection('emergency_history')
               .doc(user.uid)
@@ -68,7 +64,6 @@ class EmergencyService {
                 'lastUpdated': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
 
-          // Get the current alert document to preserve existing locations
           final alertDoc =
               await FirebaseFirestore.instance
                   .collection('emergency_history')
@@ -77,16 +72,13 @@ class EmergencyService {
                   .doc(_startTime?.toIso8601String())
                   .get();
 
-          // Get existing locations array or initialize empty array
           List<dynamic> existingLocations = [];
           if (alertDoc.exists) {
             existingLocations = alertDoc.data()?['locations'] ?? [];
           }
 
-          // Add new location to the array
           existingLocations.add(locationData);
 
-          // Update the alert document with the complete locations array
           await FirebaseFirestore.instance
               .collection('emergency_history')
               .doc(user.uid)
@@ -105,13 +97,10 @@ class EmergencyService {
     });
   }
 
-  sendMsg(List<EmergencyContact> contacts) async {
-    Position currentPostion = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
+  Future<void> sendMsg(List<EmergencyContact> contacts) async {
+    final currentPosition = await getLocation();
     final locationUrl =
-        "https://www.google.com/maps/search/?api=1&query=${currentPostion.latitude},${currentPostion.longitude}";
+        "https://www.google.com/maps/search/?api=1&query=${currentPosition.latitude},${currentPosition.longitude}";
     final message = "EMERGENCY: I need help! My location: $locationUrl";
 
     for (final contact in contacts) {
@@ -119,48 +108,37 @@ class EmergencyService {
     }
   }
 
-  call(String phoneNumber) async {
-    Permission.phone.request();
+  Future<void> call(String phoneNumber) async {
+    await Permission.phone.request();
     FlutterDirectCall.makeDirectCall(phoneNumber);
   }
 
-  /// Starts the emergency process when SOS is triggered
   Future<void> startEmergencyProcess() async {
-    getPermissionMsg();
+    await requestAllPermissions();
     if (_isEmergencyActive) return;
+
     _isEmergencyActive = true;
     _startTime = DateTime.now();
     _locationHistory = [];
 
     try {
-      // Get emergency contacts
       final contacts = await _firebaseService.getEmergencyContacts();
       if (contacts.isEmpty) {
         throw Exception(
-          'No emergency contacts found. Please add at least one emergency contact',
+          'No emergency contacts found. Please add at least one emergency contact.',
         );
       }
 
-      // Find primary contact
       final primaryContact = contacts.firstWhere(
         (contact) => contact.isPrimary,
         orElse: () => contacts.first,
       );
 
-      // Get permissions
-      // getPermissionMsg();
-      getLocationPermission();
+      await sendMsg(contacts);
+      await call(primaryContact.phone);
 
-      // Send SMS to all contacts
-      sendMsg(contacts);
-
-      // Call primary contact
-      call(primaryContact.phone);
-
-      // Create emergency record in Firebase
       final user = _firebaseService.currentUser;
       if (user != null) {
-        // First, create or update the emergency_history document
         await FirebaseFirestore.instance
             .collection('emergency_history')
             .doc(user.uid)
@@ -168,7 +146,6 @@ class EmergencyService {
               'lastUpdated': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 
-        // Then, create the initial alert document
         await FirebaseFirestore.instance
             .collection('emergency_history')
             .doc(user.uid)
@@ -184,28 +161,23 @@ class EmergencyService {
             });
       }
 
-      // Start location updates
       _startLocationUpdates();
     } catch (e) {
-      debugPrint('Error in emergency process: $e');
-      stopEmergencyProcess();
+      debugPrint('Error in emergency process: \$e');
+      await stopEmergencyProcess();
       rethrow;
     }
   }
 
-  /// Stops the emergency process
   Future<void> stopEmergencyProcess() async {
     if (!_isEmergencyActive) return;
     _isEmergencyActive = false;
 
-    // Cancel location updates
     _locationUpdateTimer?.cancel();
 
-    // Update emergency record in Firebase
     final user = _firebaseService.currentUser;
     if (user != null && _startTime != null) {
       try {
-        // Update the alert document
         await FirebaseFirestore.instance
             .collection('emergency_history')
             .doc(user.uid)
@@ -218,7 +190,6 @@ class EmergencyService {
               'lastUpdated': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 
-        // Update the lastUpdated timestamp in the emergency_history document
         await FirebaseFirestore.instance
             .collection('emergency_history')
             .doc(user.uid)
@@ -226,13 +197,12 @@ class EmergencyService {
               'lastUpdated': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
       } catch (e) {
-        debugPrint('Error updating emergency record: $e');
+        debugPrint('Error updating emergency record: \$e');
       }
     }
 
     _startTime = null;
   }
 
-  /// Checks if an emergency is currently active
   bool isEmergencyActive() => _isEmergencyActive;
 }

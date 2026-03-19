@@ -5,8 +5,8 @@ import 'screens/home_screen.dart';
 import 'screens/location_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/community_screen.dart';
-import 'screens/login_screen.dart'; // Add your login screen
-import 'screens/signup_screen.dart'; // Add your signup screen
+import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,12 +39,11 @@ class WomenSafetyApp extends StatelessWidget {
         '/signup': (context) => SignupScreen(),
         '/home': (context) => MainNavigator(),
       },
-      home: const AuthCheck(), // AuthCheck determines where to navigate
+      home: const AuthCheck(),
     );
   }
 }
 
-/// **AuthCheck** - Determines whether to show login or main screen
 class AuthCheck extends StatelessWidget {
   const AuthCheck({super.key});
 
